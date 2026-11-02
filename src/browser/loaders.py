@@ -232,6 +232,103 @@ def export_pam_with_textures(entry, output_dir: str,
     }
 
 
+def _get_dest_base(paz_entry, output_dir: str, game_dir: str) -> str:
+    """Return output subfolder preserving the exact path from game root
+    including the archive folder (e.g. '0009/...' or 'dlc/dlc_01/0009/...').
+    """
+    paz_dir = os.path.dirname(os.path.abspath(paz_entry.paz_file))
+    prefix = os.path.relpath(paz_dir, os.path.abspath(game_dir))
+    if prefix and prefix != '.':
+        return os.path.join(output_dir, prefix)
+    return output_dir
+
+
+def export_native_with_structure(entry, output_dir: str,
+                                 game_dir: str, progress_fn=None,
+                                 cached_entries=None) -> dict:
+    """Export native model file (.pac/.pam), related .prefab, .pac.xml,
+    and .dds textures preserving the game root directory structure (including dlc/...).
+    """
+    from paz_unpack import extract_entry
+    from pac_export import fix_truncated_dds
+
+    output_files = []
+    tex_extracted = 0
+
+    if progress_fn:
+        progress_fn("Extracting native model file...")
+
+    # 1. Model file (.pac or .pam)
+    if entry.path.endswith('.pam'):
+        model_data = read_pam_bytes(entry)
+        model = PamParser().parse(model_data)
+    else:
+        model_data = read_pac_bytes(entry)
+        model = PacParser().parse(model_data, lods=[0])
+
+    model_dest_base = _get_dest_base(entry, output_dir, game_dir)
+    model_rel = entry.path.replace('\\', '/').replace('/', os.sep)
+    model_out = os.path.join(model_dest_base, model_rel)
+    os.makedirs(os.path.dirname(model_out), exist_ok=True)
+    with open(model_out, 'wb') as f:
+        f.write(model_data)
+    output_files.append(model_out)
+
+    # 2. Extract textures and prefabs in their exact folder paths
+    tex_basenames = set(sm.texture_basename for sm in model.submeshes if sm.texture_basename)
+    model_stem = os.path.splitext(os.path.basename(entry.path))[0].lower()
+
+    if cached_entries:
+        if progress_fn:
+            progress_fn("Extracting native prefabs and textures...")
+
+        for e in cached_entries:
+            bn = os.path.basename(e.path).lower()
+            p_lower = e.path.lower()
+            dest_base = _get_dest_base(e, output_dir, game_dir)
+
+            # Matching prefabs
+            if model_stem in bn and p_lower.endswith('.prefab'):
+                res = extract_entry(e, dest_base, decrypt_xml=True)
+                output_files.append(res['path'])
+
+            # Matching properties / physics (.pac.xml, .meshinfo, .hkx)
+            elif model_stem in bn and (p_lower.endswith('.pac.xml') or p_lower.endswith('.meshinfo') or p_lower.endswith('.hkx')):
+                res = extract_entry(e, dest_base, decrypt_xml=True)
+                output_files.append(res['path'])
+
+            # Matching textures (.dds)
+            elif any(bn.startswith(tb.lower()) and p_lower.endswith('.dds') for tb in tex_basenames):
+                res = extract_entry(e, dest_base, decrypt_xml=False)
+                # Fix truncated DDS headers
+                try:
+                    with open(res['path'], 'rb') as fp:
+                        raw = fp.read()
+                    fixed = fix_truncated_dds(raw)
+                    if len(fixed) != len(raw):
+                        with open(res['path'], 'wb') as fp:
+                            fp.write(fixed)
+                except Exception:
+                    pass
+                output_files.append(res['path'])
+                tex_extracted += 1
+
+    verts = sum(sm.get_geometry(sm.best_lod())[0].count for sm in model.submeshes if sm.get_geometry(sm.best_lod()))
+    tris = sum(sm.get_geometry(sm.best_lod())[1].count // 3 for sm in model.submeshes if sm.get_geometry(sm.best_lod()))
+
+    return {
+        'output_files': output_files,
+        'meshes': len(model.submeshes),
+        'vertices': verts,
+        'triangles': tris,
+        'names': [sm.name for sm in model.submeshes],
+        'textures_extracted': tex_extracted,
+        'textures_expected': len(tex_basenames),
+        'export_dir': output_dir,
+        'format': 'native',
+    }
+
+
 # ── Background workers ────────────────────────────────────────────
 
 class LoadWorker(QThread):
@@ -270,7 +367,12 @@ class ExportWorker(QThread):
 
     def run(self):
         try:
-            if self._entry.file_type == "pam":
+            if self._export_format == "native":
+                result = export_native_with_structure(
+                    self._entry.paz_entry, self._output_dir,
+                    self._game_dir, progress_fn=self.progress.emit,
+                    cached_entries=self._cached_entries)
+            elif self._entry.file_type == "pam":
                 result = export_pam_with_textures(
                     self._entry.paz_entry, self._output_dir,
                     self._game_dir, progress_fn=self.progress.emit,

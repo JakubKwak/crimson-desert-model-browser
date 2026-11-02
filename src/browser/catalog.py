@@ -51,8 +51,8 @@ def build_catalog(game_dir: str, progress_fn=None) -> tuple[list[CatalogEntry], 
 
             entries = parse_pamt(pamt_path, paz_dir=sub_dir)
 
-            # Cache mesh, texture, prefab, appearance, and pac.xml entries
-            useful_exts = extensions | {".dds", ".prefab", ".pac.xml", ".app.xml"}
+            # Cache mesh, texture, prefab, appearance, pac.xml, hkx, and meshinfo entries
+            useful_exts = extensions | {".dds", ".prefab", ".pac.xml", ".app.xml", ".hkx", ".meshinfo"}
             for e in entries:
                 lower = e.path.lower()
                 if any(lower.endswith(ext) for ext in useful_exts):

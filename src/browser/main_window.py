@@ -30,6 +30,7 @@ class ExportDialog(QDialog):
     """Export dialog with format selector, path selector, and dye color option."""
 
     _FORMAT_OPTIONS = [
+        ("native", "Native Archive (.pac / .prefab / textures in original folder structure)"),
         ("fbx", "FBX — mesh, materials, textures, tangents, skeleton"),
         ("gltf", "glTF — mesh, materials, textures, tangents, skeleton"),
         ("obj", "OBJ + MTL — mesh, materials, textures"),
@@ -86,11 +87,20 @@ class ExportDialog(QDialog):
         layout.addWidget(hint)
         layout.addSpacing(8)
 
+        self._format_combo.currentIndexChanged.connect(self._on_format_changed)
+        self._on_format_changed()
+
         # Export button
         export_btn = QPushButton("Export")
         export_btn.setDefault(True)
         export_btn.clicked.connect(self.accept)
         layout.addWidget(export_btn)
+
+    def _on_format_changed(self):
+        is_native = self.export_format() == "native"
+        self._dye_check.setEnabled(not is_native)
+        if is_native:
+            self._dye_check.setChecked(False)
 
     def _browse(self):
         d = QFileDialog.getExistingDirectory(self, "Export to folder", self._path_edit.text())
@@ -657,9 +667,14 @@ class BrowserWindow(QMainWindow):
         tex_total = result.get('textures_expected', 0)
         path = result.get('export_dir', '')
         fmt = result.get('format', 'obj').upper()
-        self.statusBar().showMessage(
-            f"Exported {fmt} to {path} — {result['vertices']} verts, "
-            f"{result['triangles']} tris, {tex}/{tex_total} textures")
+        if fmt == 'NATIVE':
+            total_files = len(result.get('output_files', []))
+            self.statusBar().showMessage(
+                f"Exported {total_files} native files to {path} ({tex} textures, .prefab, model)")
+        else:
+            self.statusBar().showMessage(
+                f"Exported {fmt} to {path} — {result.get('vertices', 0)} verts, "
+                f"{result.get('triangles', 0)} tris, {tex}/{tex_total} textures")
 
     def _on_export_error(self, msg):
         self._export_action.setEnabled(True)
