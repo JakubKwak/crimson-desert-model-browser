@@ -1,3 +1,13 @@
+# INFO
+
+This is a fork of Altair200333's original model browser which is not currently maintained for new versions of CD.
+It works with 2.04.05 and the Charting the Unknown DLC.
+I also removed the submodule for lazorr410's unpacker tool as it also required updating to work with the name game. Once the original authors of the tools update the main repo, I will remove this fork.
+
+# AI disclaimer
+
+I used LLMs to parse Crimson Desert's archive files and update the tool.
+
 # Crimson Desert Model Browser
 
 **Crimson Desert Modding Community:** [Join Discord](https://discord.gg/CRPCBAPY5b)
