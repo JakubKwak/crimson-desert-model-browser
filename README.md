@@ -1,12 +1,26 @@
-# INFO
+# Fork Info
 
-This is a fork of Altair200333's original model browser which is not currently maintained for new versions of CD.
-It works with 2.04.05 and the Charting the Unknown DLC.
-I also removed the submodule for lazorr410's unpacker tool as it also required updating to work with the name game. Once the original authors of the tools update the main repo, I will remove this fork.
+This is a fork of Altair200333's Crimson Desert Model Browser, created as it seems the original is no longer being maintained to work with new versions of the game (and DLCs).
+I created it with version 2.04.05 of the game in mind.
 
-# AI disclaimer
+I mostly created this for my own personal use. If/when the original authors update their tools to work with the new game version I will delete this fork!
 
-I used LLMs to parse Crimson Desert's archive files and update the tool.
+## What's different
+
+- Support for 2.04.05 and the Charting the Unknown DLC.
+- Option to export native prefab files instead of converting to OBJ/FBX - This was already possible using lazorr410's unpacker, but being able to do it directly from the model viewer is more convenient.
+- Additional filters (Items, and filter by DLC/Base Game)
+- Removed the [lazorr410/crimson-desert-unpacker](https://github.com/lazorr410/crimson-desert-unpacker) submodule. I vendored it into this repo and committed it. It also required updating to support the new game version and I didn't want to maintain two forks.
+
+
+## Disclaimers
+
+This is heavily vibe-coded. I used LLMs to both inspect the raw PAC files and make the changes required to make this work.
+Seriously, I barely checked the code. Use at your own risk.
+
+
+
+## The original README contents are below:
 
 # Crimson Desert Model Browser
 
